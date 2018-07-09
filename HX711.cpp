@@ -1,12 +1,6 @@
 #include <Arduino.h>
 #include <HX711.h>
 
-#if ARDUINO_VERSION <= 106
-    // "yield" is not implemented as noop in older Arduino Core releases, so let's define it.
-    // See also: https://stackoverflow.com/questions/34497758/what-is-the-secret-of-the-arduino-yieldfunction/34498165#34498165
-    void yield(void) {};
-#endif
-
 HX711::HX711(byte dout, byte pd_sck, byte gain) {
 	begin(dout, pd_sck, gain);
 }
@@ -25,6 +19,42 @@ void HX711::begin(byte dout, byte pd_sck, byte gain) {
 	pinMode(DOUT, INPUT);
 
 	set_gain(gain);
+}
+
+
+void HX711::update() {
+    if( is_ready() ) {
+
+        unsigned long value = 0;
+        uint8_t data[3] = { 0 };
+        uint8_t filler = 0x00;
+
+        // pulse the clock pin 24 times to read the data
+        data[2] = shiftIn(DOUT, PD_SCK, MSBFIRST);
+        data[1] = shiftIn(DOUT, PD_SCK, MSBFIRST);
+        data[0] = shiftIn(DOUT, PD_SCK, MSBFIRST);
+
+        // set the channel and the gain factor for the next reading using the clock pin
+        for (unsigned int i = 0; i < GAIN; i++) {
+                digitalWrite(PD_SCK, HIGH);
+                digitalWrite(PD_SCK, LOW);
+        }
+
+        // Replicate the most significant bit to pad out a 32-bit signed integer
+        if (data[2] & 0x80) {
+                filler = 0xFF;
+        } else {
+                filler = 0x00;
+        }
+
+        // Construct a 32-bit signed integer
+        value = ( static_cast<unsigned long>(filler) << 24
+                        | static_cast<unsigned long>(data[2]) << 16
+                        | static_cast<unsigned long>(data[1]) << 8
+                        | static_cast<unsigned long>(data[0]) );
+
+        m_lastValue = static_cast<long>(value);
+    }
 }
 
 bool HX711::is_ready() {

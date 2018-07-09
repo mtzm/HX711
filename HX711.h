@@ -15,6 +15,7 @@ class HX711
 		byte GAIN;		// amplification factor
 		long OFFSET = 0;	// used for tare weight
 		float SCALE = 1;	// used to return weight in grams, kg, ounces, whatever
+                long m_lastValue = 0;
 
 	public:
 		// define clock and data pin, channel, and gain factor
@@ -29,6 +30,15 @@ class HX711
 		// Allows to set the pins and gain later than in the constructor
 		void begin(byte dout, byte pd_sck, byte gain = 128);
 
+                void update();
+                float getLastValue() const { return (m_lastValue - OFFSET)/SCALE;}
+
+                // set the OFFSET value for tare weight; times = how many times to read the tare value
+                void tare(byte times = 10);
+
+                // set the SCALE value; this value is used to convert the raw data to "human readable" data (measure units)
+                void set_scale(float scale = 1.f);
+protected:
 		// check if HX711 is ready
 		// from the datasheet: When output data is not ready for retrieval, digital output pin DOUT is high. Serial clock
 		// input PD_SCK should be low. When DOUT goes to low, it indicates data is ready for retrieval.
@@ -52,11 +62,7 @@ class HX711
 		// times = how many readings to do
 		float get_units(byte times = 1);
 
-		// set the OFFSET value for tare weight; times = how many times to read the tare value
-		void tare(byte times = 10);
 
-		// set the SCALE value; this value is used to convert the raw data to "human readable" data (measure units)
-		void set_scale(float scale = 1.f);
 
 		// get the current SCALE
 		float get_scale();
